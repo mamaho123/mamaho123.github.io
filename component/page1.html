@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>B2D_FE_HW_D6_Potae_P1</title>
+		<link
+			href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap"
+			rel="stylesheet"
+		/>
+		<!-- <link rel="stylesheet" href="../../../css_Global/myStyle.css" /> -->
+		<link rel="stylesheet" href="../css/myCSS.css" />
+		<!-- SweetAlert2 -->
+		<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.3/dist/sweetalert2.all.min.js"></script>
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.3/dist/sweetalert2.min.css">
+		
+		<style>
+			body {
+				background-color: gray;
+				color: white;
+			}
+			.section {
+				background-color: rgb(50, 50, 60);
+				/* color: black;  */
+				border: 3px solid rgb(0, 0, 0);
+				border-radius: 10px;
+				margin-left: 50px;
+				margin-right: 50px;
+				margin-top: 10px;
+				/* padding-left: 30px; */
+				padding: 30px;
+				/* text-align: center; */
+			}
+
+			body,
+			h1 {
+				font-family: 'Roboto', sans-serif;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- <div id="header-container" ></div> -->
+		<section class="section" id="playgound">
+			<div class="header-link">
+				<nav>
+					<ul>
+						<li><a href="../index.html" class="btn2"> Home</a></li>
+						<li>
+							<a href="#" class="btn2-active">
+								<i class="fa-solid fa-clipboard-list" style="color: yellow"></i>
+								Homework
+							</a>
+						</li>
+						<li><a href="./page2.html" class="btn2">In Class</a></li>
+						<li><a href="./page3.html" class="btn2">Page 3</a></li>
+						<li><a href="./page4.html" class="btn2">Page 4</a></li>
+					</ul>
+				</nav>
+			</div>
+			<hr />
+			<h3>The homework for each week will be here!</h3>
+
+			<section class="section-subH2" id="Test">
+				<h1 class="section-sub-head2">FEBE_BC3 Homework</h1>
+				<div class="my-ribbon" data-label="#0"></div>
+				<div class="sectoin-subH2-container">
+					<table id="myTB1">
+						<tr>
+							<th>Catagoey</th>
+							<th>Date</th>
+							<th>Title</th>
+							<th>Disscription</th>
+							<th>Link</th>
+						</tr>
+						<tr>
+							<td>FE #6</td>
+							<td>2024-01-08, Thu</td>
+							<td>Page Link</td>
+							<td>Linking the html file at lest 5 pages</td>
+							<td>
+								<button id="btn_submit3" class="btn2" style="padding: 3px 10px" onclick="{showAlert()}">
+									Go
+								</button>
+							</td>
+						</tr>
+						<tr>
+							<td>FE #8</td>
+							<td>2024-01-11, Thu</td>
+							<td>To Do List</td>
+							<td>Create the do to list with event listener <br> use the <strong style="color:blue">innerHTML</strong></td>
+							<td>
+								<button id="btn_submit3a" class="btn2" style="padding: 3px 10px" onclick="{{reDirectpage({url:'./Homework/FE_D8/D8_To_do_List.html'})}}">
+									Go
+								</button>
+							</td>
+						</tr>
+						<tr>
+							<td>FE #9</td>
+							<td>2024-01-16, Tue</td>
+							<td>BMI Calculator</td>
+							<td>Create the BMI calculator</td>
+							<td>
+								<button id="btn_submit3b" class="btn2" style="padding: 3px 10px" onclick="{{reDirectpage({url:'./Homework/FE_D9/D9_BMI.html'})}}">
+									Go
+								</button>
+							</td>
+						</tr>
+						<tr>
+							<td>FE #12</td>
+							<td>2024-01-25, Tue</td>
+							<td>Web layout - Grid</td>
+							<td>Create web from request
+
+								<img src="https://wobbly-potential-018.notion.site/image/https%3A%2F%2Fs3-us-west-2.amazonaws.com%2Fsecure.notion-static.com%2Fdaa02ca4-95cc-4d6d-95bf-56f52a866b3a%2FUntitled.png?id=34a9b4c2-860e-476a-8748-c70873a42a03&table=block&spaceId=48b354c3-efc8-4ec1-8d33-bf3488a7726c&width=2000&userId=&cache=v2" width="300px" alt="image" />
+							</td>
+							<td>
+								<button id="btn_submit3c" class="btn2" style="padding: 3px 10px" onclick="{{reDirectpage({url:'./Homework/FE_D12/D12_Layout.html'})}}">
+									Go
+								</button>
+							</td>
+						</tr>
+						<tr>
+							<td>FE #13</td>
+							<td>2024-01-30, Tue</td>
+							<td>Web layout - Flex + Animated</td>
+							<td>Create web from request but use Flex + Animated
+
+								<img src="https://wobbly-potential-018.notion.site/image/https%3A%2F%2Fs3-us-west-2.amazonaws.com%2Fsecure.notion-static.com%2Fdaa02ca4-95cc-4d6d-95bf-56f52a866b3a%2FUntitled.png?id=34a9b4c2-860e-476a-8748-c70873a42a03&table=block&spaceId=48b354c3-efc8-4ec1-8d33-bf3488a7726c&width=2000&userId=&cache=v2" width="300px" alt="image" />
+							</td>
+							<td>
+								<button id="btn_submit3d" class="btn2" style="padding: 3px 10px" onclick="{{reDirectpage({url:'./Homework/FE_D13/D13_Layout.html'})}}">
+									Go
+								</button>
+							</td>
+						</tr>
+					</table>
+				</div>
+			</section>
+		</section>
+		<script src="./script.js"></script>
+	</body>
+</html>

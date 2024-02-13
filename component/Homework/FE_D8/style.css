@@ -1,0 +1,7 @@
+/* Add your existing styles here */
+
+/* Style for checked items */
+.checked {
+  text-decoration: line-through;
+  color: #888; /* Change this color to your desired checked color */
+}

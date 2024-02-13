@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>B2D_FE_HW_D9_Potae</title>
+		<link
+			href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap"
+			rel="stylesheet"
+		/>
+		<!-- <link rel="stylesheet" href="../../../css_Global/myStyle.css" /> -->
+		<link rel="stylesheet" href="../../../css/myCSS.css" />
+		<link rel="stylesheet" href="./style.css" />
+
+		<style>
+			body {
+				background-color: gray;
+				color: white;
+			}
+			.section {
+				background-color: rgb(50, 50, 60);
+				/* color: black;  */
+				border: 3px solid rgb(0, 0, 0);
+				border-radius: 10px;
+				margin-left: 50px;
+				margin-right: 50px;
+				margin-top: 10px;
+				/* padding-left: 30px; */
+				padding: 30px;
+				/* text-align: center; */
+			}
+
+			body,
+			h1 {
+				font-family: 'Roboto', sans-serif;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- <div id="header-container" ></div> -->
+		<section class="section" id="playgound">
+			<div class="header-link">
+				<nav>
+					<ul>
+						<li>
+							<a href="../../page1.html" class="btn2">
+								<i class="fa-solid fa-clipboard-list" style="color: yellow"></i>
+								Back to Homework Page
+							</a>
+						</li>
+					</ul>
+				</nav>
+			</div>
+			<hr />
+			<h3>The home work of FE #9 : BMI Calculator</h3>
+			<p>
+				Let's check your BMI.
+			</p>
+
+			<section class="section-subH2" id="Test">
+				<h1 class="section-sub-head2">BMI Calculator</h1>
+				<div class="my-ribbon" data-label="#01"></div>
+				<div class="sectoin-subH2-container">
+					<div id="bmi_cal" style="padding-top: 10px">
+            <table width="100%">
+              <tr width="100%">
+                <td width="40%">
+                  <label>Enter your height in cm</label><br>
+                  <input style="margin-bottom: 10px" type="text" id="height" placeholder="Your height (cm) ..." title="height" onkeydown="handleKeyPress(event, 'weight')"/>
+                  <br>
+                  <label>Enter your weight in kg</label><br>
+                  <input style="margin-bottom: 10px" type="text" id="weight" placeholder="Your weight (kg) ..." title="weight" onkeydown="handleKeyPress(event, 'calculate')" />
+                  <br />
+                  <button class="btn2 btn2a" style="width: 100%; padding: 3px 10px" onclick="calculateBMI()">Calculate BMI</button>
+                </td>
+                <td id="bmi_area" width="60%">
+                  <div id="bmi_result" style="border: 2px solid black; width: 80%; height: 100%; padding: 50px 0px; text-align: center">
+                    <div id="bmi_result"><br><br></div>
+                  </div>
+                </td>
+              </tr>
+            </table>
+
+					</div>
+				</div>
+			</section>
+		</section>
+
+		<script src="./script.js"></script>
+	</body>
+</html>

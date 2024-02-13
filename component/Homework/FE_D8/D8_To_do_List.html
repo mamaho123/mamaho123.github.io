@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>B2D_FE_HW_D8_Potae</title>
+		<link
+			href="https://fonts.googleapis.com/css?family=Roboto:400,700&display=swap"
+			rel="stylesheet"
+		/>
+		<!-- <link rel="stylesheet" href="../../../css_Global/myStyle.css" /> -->
+		<link rel="stylesheet" href="../../../css/myCSS.css" />
+		<link rel="stylesheet" href="./style.css" />
+
+		<style>
+			body {
+				background-color: gray;
+				color: white;
+			}
+			.section {
+				background-color: rgb(50, 50, 60);
+				/* color: black;  */
+				border: 3px solid rgb(0, 0, 0);
+				border-radius: 10px;
+				margin-left: 50px;
+				margin-right: 50px;
+				margin-top: 10px;
+				/* padding-left: 30px; */
+				padding: 30px;
+				/* text-align: center; */
+			}
+
+			body,
+			h1 {
+				font-family: 'Roboto', sans-serif;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- <div id="header-container" ></div> -->
+		<section class="section" id="playgound">
+			<div class="header-link">
+				<nav>
+					<ul>
+						<li>
+							<a href="../../page1.html" class="btn2">
+								<i class="fa-solid fa-clipboard-list" style="color: yellow"></i>
+								Back to Homework Page
+							</a>
+						</li>
+					</ul>
+				</nav>
+			</div>
+			<hr />
+			<h3>The home work of FE #8 : To do List</h3>
+			<p>
+				I want to write some disscription here ... but there are no idea to write the discription
+				yet. So if you read the message until this line then you have to skip to the homework below
+				instead of wasting your time for reading something that not even the discription of the
+				homework.
+			</p>
+
+			<section class="section-subH2" id="Test">
+				<h1 class="section-sub-head2">To Do List</h1>
+				<div class="my-ribbon" data-label="#01"></div>
+				<div class="sectoin-subH2-container">
+					<div>
+						<input type="text" id="taskInput" placeholder="To do.." title="To do" />
+						<button class="btn2" style="padding: 3px 10px" onclick="addTask()">Add</button>
+				</div>
+					<div id="todoList" style="padding-top: 10px">
+						<table id="myTB1">
+							<tr>
+								<th>id</th>
+								<th>Date</th>
+								<th>Title</th>
+								<th>Button</th>
+							</tr>
+							<!-- <tr>
+								<td>1</td>
+								<td>2024-01-11,Thu</td>
+								<td>
+									some discription
+								</td>
+								<td>
+									<button
+										id="btn_toggleCheck"
+										class=""
+										style="padding: 3px 10px"
+										onclick="{{toggleCheck()}}"
+									>
+										check
+									</button>
+									<button
+										id="btn_delete"
+										class=""
+										style="padding: 3px 10px"
+										onclick="{{deleteItem()}}"
+									>
+										delete
+									</button>
+								</td>
+							</tr> -->
+						</table>
+					</div>
+				</div>
+			</section>
+		</section>
+
+		<script src="./script.js"></script>
+	</body>
+</html>
