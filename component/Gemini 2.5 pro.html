@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>GPU Particle Morphing Demo</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        /* Basic CSS to ensure the canvas fills the entire screen */
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+            color: #fff;
+            font-family: monospace;
+        }
+        canvas {
+            display: block;
+        }
+        /* Style for the dat.GUI panel */
+        .dg.main .close-button {
+            background-color: #222;
+        }
+    </style>
+</head>
+<body>
+
+<script type="importmap">
+{
+    "imports": {
+        "three": "https://unpkg.com/three@0.164.1/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.164.1/examples/jsm/"
+    }
+}
+</script>
+
+<script type="module">
+
+    //================================================================================================
+    // 1. IMPORTS
+    //================================================================================================
+    
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+    import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
+    import { GammaCorrectionShader } from 'three/addons/shaders/GammaCorrectionShader.js';
+    import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+    import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
+    import { FontLoader } from 'three/addons/loaders/FontLoader.js';
+
+
+    //================================================================================================
+    // 2. SETUP & INITIALIZATION
+    //================================================================================================
+    
+    let scene, camera, renderer, controls, composer;
+    let particles, shaderMaterial;
+    let clock = new THREE.Clock();
+
+    // Configuration object for GUI controls
+    const params = {
+        particleSize: 1.5,
+        rotationSpeed: 0.2,
+        particleColor: 0x40e0d0, // Turquoise
+        bloomStrength: 1.2,
+        motionTrailOpacity: 0.9,
+        morphTarget: 'Sphere',
+    };
+
+    // State management for morphing animation
+    const morphState = {
+        progress: 0,
+        currentTarget: 0,
+        nextTarget: 0,
+        isMorphing: false
+    };
+    
+    // Constants
+    const PARTICLE_COUNT = 50000;
+    const TARGETS = { 'Sphere': 0, 'Bird': 1, 'Face': 2, 'Tree': 3 };
+
+    function init() {
+        // --- Scene ---
+        scene = new THREE.Scene();
+
+        // --- Camera ---
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 25;
+        scene.add(camera);
+
+        // --- Renderer ---
+        renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setClearColor(0x000000, 1 - params.motionTrailOpacity);
+        document.body.appendChild(renderer.domElement);
+
+        // --- Lighting ---
+        // Minimal lighting to give some shape definition to the particle cloud.
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(1, 1, 1);
+        camera.add(directionalLight);
+
+        // --- Controls ---
+        controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        // --- Particle System ---
+        createParticleSystem();
+
+        // --- Post-Processing ---
+        setupPostProcessing();
+
+        // --- UI ---
+        setupGUI();
+        
+        // --- Event Listeners ---
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    //================================================================================================
+    // 3. PARTICLE SYSTEM & MORPH TARGETS
+    //================================================================================================
+
+    /**
+     * How Morph Targets are Built:
+     * 1. A single BufferGeometry is created to hold all particle data.
+     * 2. For each target shape (Sphere, Bird, etc.), we generate a standard Three.js geometry.
+     * 3. We then sample vertices from these geometries to get target positions.
+     * 4. These positions are stored in separate Float32Array buffers (`morphSphere`, `morphBird`, etc.).
+     * 5. Each of these buffers is added as a custom attribute to the main particle BufferGeometry.
+     * This makes the target positions available to every particle on the GPU.
+     * 6. The vertex shader then uses these attributes to calculate the particle's final position.
+     */
+    function createParticleSystem() {
+        const geometry = new THREE.BufferGeometry();
+
+        // Base positions and random values for each particle
+        const positions = new Float32Array(PARTICLE_COUNT * 3);
+        const randoms = new Float32Array(PARTICLE_COUNT);
+
+        // --- Create Buffers for each Morph Target ---
+        const morphSphere = new Float32Array(PARTICLE_COUNT * 3);
+        const morphBird = new Float32Array(PARTICLE_COUNT * 3);
+        const morphFace = new Float32Array(PARTICLE_COUNT * 3);
+        const morphTree = new Float32Array(PARTICLE_COUNT * 3);
+        
+        // --- Populate Morph Target Buffers ---
+        populateMorphTarget(morphSphere, createSphereGeometry());
+        populateMorphTarget(morphBird, createBirdGeometry());
+        populateMorphTarget(morphFace, createFaceGeometry());
+        populateMorphTarget(morphTree, createTreeGeometry());
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            positions[i * 3 + 0] = morphSphere[i * 3 + 0];
+            positions[i * 3 + 1] = morphSphere[i * 3 + 1];
+            positions[i * 3 + 2] = morphSphere[i * 3 + 2];
+            randoms[i] = Math.random();
+        }
+
+        // --- Set Attributes on Geometry ---
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geometry.setAttribute('aRandom', new THREE.BufferAttribute(randoms, 1));
+        geometry.setAttribute('morphSphere', new THREE.BufferAttribute(morphSphere, 3));
+        geometry.setAttribute('morphBird', new THREE.BufferAttribute(morphBird, 3));
+        geometry.setAttribute('morphFace', new THREE.BufferAttribute(morphFace, 3));
+        geometry.setAttribute('morphTree', new THREE.BufferAttribute(morphTree, 3));
+
+        // --- Shader Material ---
+        shaderMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                uTime: { value: 0.0 },
+                uPointSize: { value: params.particleSize },
+                uColor: { value: new THREE.Color(params.particleColor) },
+                uRotationSpeed: { value: params.rotationSpeed },
+                // Morphing uniforms
+                uMorphProgress: { value: 0.0 },
+                uCurrentTarget: { value: 0 },
+                uNextTarget: { value: 0 }
+            },
+            vertexShader: vertexShaderSource,
+            fragmentShader: fragmentShaderSource,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        particles = new THREE.Points(geometry, shaderMaterial);
+        scene.add(particles);
+    }
+
+    /**
+     * Fills a target buffer by sampling vertices from a given source geometry.
+     * If the source has fewer vertices than particles, it loops over the source vertices.
+     */
+    function populateMorphTarget(targetBuffer, sourceGeometry) {
+        const sourcePositions = sourceGeometry.attributes.position.array;
+        const sourceVertexCount = sourcePositions.length / 3;
+
+        for (let i = 0; i < PARTICLE_COUNT; i++) {
+            const index = i % sourceVertexCount;
+            targetBuffer[i * 3 + 0] = sourcePositions[index * 3 + 0];
+            targetBuffer[i * 3 + 1] = sourcePositions[index * 3 + 1];
+            targetBuffer[i * 3 + 2] = sourcePositions[index * 3 + 2];
+        }
+        sourceGeometry.dispose(); // Clean up memory
+    }
+
+    // --- Procedural Geometry Generation ---
+
+    function createSphereGeometry() {
+        return new THREE.SphereGeometry(10, 64, 64);
+    }
+    
+    function createBirdGeometry() {
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0);
+        shape.bezierCurveTo(0.5, 0.5, 1.5, 1, 3, 0);
+        shape.bezierCurveTo(4, -0.8, 2, -1.5, 0, -0.5);
+        shape.bezierCurveTo(-2, -1.5, -4, -0.8, -3, 0);
+        shape.bezierCurveTo(-1.5, 1, -0.5, 0.5, 0, 0);
+
+        const extrudeSettings = { depth: 0.5, bevelEnabled: false };
+        const geometry = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        geometry.scale(3.5, 3.5, 3.5);
+        geometry.center();
+        return geometry;
+    }
+
+    function createFaceGeometry() {
+        const mergedGeometry = new THREE.BufferGeometry();
+        const geometries = [];
+
+        // Head shape
+        const head = new THREE.SphereGeometry(9, 32, 32, 0, Math.PI * 2, 0, Math.PI / 1.5);
+        head.translate(0, -3, 0);
+        geometries.push(head);
+        
+        // Eyes
+        const eye = new THREE.SphereGeometry(1, 16, 16);
+        const leftEye = eye.clone().translate(-3, 2, 7);
+        const rightEye = eye.clone().translate(3, 2, 7);
+        geometries.push(leftEye, rightEye);
+
+        // Mouth
+        const mouthPath = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-3, -2, 7),
+            new THREE.Vector3(-1, -3, 7.5),
+            new THREE.Vector3(1, -3, 7.5),
+            new THREE.Vector3(3, -2, 7),
+        ]);
+        const mouth = new THREE.TubeGeometry(mouthPath, 20, 0.3, 8, false);
+        geometries.push(mouth);
+
+        // Simple merge (not true boolean merge, just combines vertices)
+        let totalVertices = 0;
+        for(const geom of geometries) {
+            totalVertices += geom.attributes.position.count;
+        }
+
+        const mergedPositions = new Float32Array(totalVertices * 3);
+        let offset = 0;
+        for(const geom of geometries) {
+            mergedPositions.set(geom.attributes.position.array, offset);
+            offset += geom.attributes.position.array.length;
+            geom.dispose();
+        }
+
+        mergedGeometry.setAttribute('position', new THREE.BufferAttribute(mergedPositions, 3));
+        return mergedGeometry;
+    }
+    
+    function createTreeGeometry() {
+        const mergedGeometry = new THREE.BufferGeometry();
+        const geometries = [];
+        
+        // Trunk
+        const trunk = new THREE.CylinderGeometry(1, 1.5, 12, 16);
+        trunk.translate(0, -6, 0);
+        geometries.push(trunk);
+
+        // Foliage (three cones)
+        const foliage1 = new THREE.ConeGeometry(6, 8, 16);
+        foliage1.translate(0, 4, 0);
+        geometries.push(foliage1);
+        
+        const foliage2 = new THREE.ConeGeometry(5, 7, 16);
+        foliage2.translate(0, 8, 0);
+        geometries.push(foliage2);
+
+        const foliage3 = new THREE.ConeGeometry(4, 6, 16);
+        foliage3.translate(0, 11, 0);
+        geometries.push(foliage3);
+
+        // Merge logic (same as face)
+        let totalVertices = 0;
+        geometries.forEach(g => totalVertices += g.attributes.position.count);
+        const mergedPositions = new Float32Array(totalVertices * 3);
+        let offset = 0;
+        for (const geom of geometries) {
+            mergedPositions.set(geom.attributes.position.array, offset);
+            offset += geom.attributes.position.array.length;
+            geom.dispose();
+        }
+        
+        mergedGeometry.setAttribute('position', new THREE.BufferAttribute(mergedPositions, 3));
+        mergedGeometry.scale(0.8, 0.8, 0.8);
+        mergedGeometry.translate(0, -3, 0);
+        return mergedGeometry;
+    }
+
+
+    //================================================================================================
+    // 4. SHADERS
+    //================================================================================================
+    
+    /**
+     * Shader Logic for GPU Particle Updates:
+     * 1. Uniforms: The shader receives uniforms for time, size, color, rotation, and morphing state
+     * (uMorphProgress, uCurrentTarget, uNextTarget).
+     * 2. Attributes: It receives per-particle attributes for its position in each target shape
+     * (morphSphere, morphBird, etc.).
+     * 3. Target Selection: A series of `if/else if` statements checks the `uCurrentTarget` and
+     * `uNextTarget` integer uniforms to select the correct start and end position attributes.
+     * 4. Interpolation: The GLSL `mix()` function performs linear interpolation between the start
+     * and end target positions. `uMorphProgress` (a float from 0.0 to 1.0) drives this interpolation.
+     * `finalPosition = mix(startTargetPosition, endTargetPosition, uMorphProgress);`
+     * 5. Rotation: A 2D rotation matrix is constructed using `sin` and `cos` of time and rotation speed.
+     * This is applied to the XZ coordinates of the `finalPosition` to make the whole system spin.
+     * 6. Final Position: The result is transformed by the model, view, and projection matrices to get
+     * the final screen position (`gl_Position`).
+     * 7. Particle Size: `gl_PointSize` is set from the `uPointSize` uniform.
+     */
+    const vertexShaderSource = `
+        // Uniforms passed from JavaScript
+        uniform float uTime;
+        uniform float uPointSize;
+        uniform float uRotationSpeed;
+        uniform float uMorphProgress;
+        uniform int uCurrentTarget;
+        uniform int uNextTarget;
+
+        // Per-particle attributes
+        attribute float aRandom;
+        attribute vec3 morphSphere;
+        attribute vec3 morphBird;
+        attribute vec3 morphFace;
+        attribute vec3 morphTree;
+
+        // Varying to pass color to fragment shader
+        varying vec3 vColor;
+
+        // Function to select a target position based on an integer ID
+        vec3 selectTarget(int id) {
+            if (id == 0) return morphSphere;
+            if (id == 1) return morphBird;
+            if (id == 2) return morphFace;
+            if (id == 3) return morphTree;
+            return morphSphere; // Default fallback
+        }
+
+        void main() {
+            // Select the start and end positions for the current morph
+            vec3 startPos = selectTarget(uCurrentTarget);
+            vec3 endPos = selectTarget(uNextTarget);
+
+            // Interpolate between the start and end positions
+            // The 'smoothstep' function creates a nice ease-in/ease-out effect
+            float progress = smoothstep(0.0, 1.0, uMorphProgress);
+            vec3 mixedPos = mix(startPos, endPos, progress);
+
+            // Add some random oscillating motion to each particle
+            mixedPos.y += sin(uTime * 0.5 + aRandom * 10.0) * 0.2;
+            mixedPos.x += cos(uTime * 0.5 + aRandom * 10.0) * 0.2;
+
+            // Apply global rotation
+            float angle = uTime * uRotationSpeed;
+            mat2 rotationMatrix = mat2(cos(angle), -sin(angle), sin(angle), cos(angle));
+            mixedPos.xz = rotationMatrix * mixedPos.xz;
+            
+            // Calculate final position
+            vec4 modelPosition = modelMatrix * vec4(mixedPos, 1.0);
+            vec4 viewPosition = viewMatrix * modelPosition;
+            vec4 projectedPosition = projectionMatrix * viewPosition;
+
+            gl_Position = projectedPosition;
+
+            // Set particle size
+            gl_PointSize = uPointSize * (300.0 / -viewPosition.z); // Adjust size based on depth
+        }
+    `;
+
+    const fragmentShaderSource = `
+        uniform vec3 uColor;
+
+        void main() {
+            // Create a circular shape for the particle
+            float distanceToCenter = distance(gl_PointCoord, vec2(0.5));
+            float strength = 1.0 - (distanceToCenter * 2.0); // Sharp circle
+            
+            if (strength < 0.0) discard; // Discard pixels outside the circle
+
+            // Set the final color
+            gl_FragColor = vec4(uColor, strength);
+        }
+    `;
+
+
+    //================================================================================================
+    // 5. POST-PROCESSING
+    //================================================================================================
+    
+    /**
+     * How the Post-Processing Pipeline is Assembled:
+     * 1. EffectComposer: An `EffectComposer` is initialized. It acts as a pipeline manager,
+     * running a sequence of rendering passes instead of rendering directly to the screen.
+     * 2. RenderPass: The first pass is always a `RenderPass`. Its job is to render the main
+     * scene into a buffer, which subsequent passes can then read from and process.
+     * 3. UnrealBloomPass: This pass takes the output of the `RenderPass` and applies a bloom
+     * (glow) effect. It works by extracting the brightest parts of the image, blurring them,
+     * and then adding them back to the original scene. Its `strength`, `radius`, and `threshold`
+     * can be tweaked.
+     * 4. GammaCorrectionShader: Computer monitors don't display colors linearly. Rendering is done
+     * in a linear color space, but the final output needs to be adjusted ("gamma corrected")
+     * to look correct on a screen. This pass is typically the final one in the chain to
+     * ensure all previous effects are correctly color-corrected.
+     */
+    function setupPostProcessing() {
+        composer = new EffectComposer(renderer);
+        
+        // 1. Render the scene
+        const renderPass = new RenderPass(scene, camera);
+        composer.addPass(renderPass);
+
+        // 2. Apply bloom
+        const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        bloomPass.strength = params.bloomStrength;
+        bloomPass.radius = 0;
+        bloomPass.threshold = 0;
+        composer.addPass(bloomPass);
+
+        // 3. Apply gamma correction
+        const gammaCorrectionPass = new ShaderPass(GammaCorrectionShader);
+        composer.addPass(gammaCorrectionPass);
+    }
+    
+
+    //================================================================================================
+    // 6. UI (dat.GUI)
+    //================================================================================================
+
+    function setupGUI() {
+        const gui = new GUI();
+        gui.title("Controls");
+
+        gui.add(params, 'particleSize', 0.1, 5.0).name('Particle Size').onChange(value => {
+            shaderMaterial.uniforms.uPointSize.value = value;
+        });
+
+        gui.add(params, 'rotationSpeed', -2.0, 2.0).name('Rotation Speed').onChange(value => {
+            shaderMaterial.uniforms.uRotationSpeed.value = value;
+        });
+
+        gui.addColor(params, 'particleColor').name('Particle Color').onChange(value => {
+            shaderMaterial.uniforms.uColor.value.set(value);
+        });
+
+        const ppFolder = gui.addFolder('Post-Processing');
+        ppFolder.add(params, 'bloomStrength', 0.0, 3.0).name('Bloom Strength').onChange(value => {
+            composer.passes[1].strength = value;
+        });
+        ppFolder.add(params, 'motionTrailOpacity', 0.0, 1.0).name('Trail Opacity').onChange(value => {
+            // We control this by setting the alpha of the renderer's clear color
+            renderer.setClearAlpha(1.0 - value);
+        });
+
+        gui.add(params, 'morphTarget', Object.keys(TARGETS)).name('Morph Target').onChange(value => {
+            triggerMorph(TARGETS[value]);
+        });
+    }
+
+
+    //================================================================================================
+    // 7. ANIMATION & MORPHING LOGIC
+    //================================================================================================
+    
+    /**
+     * Triggers the morphing animation from the current shape to the next.
+     */
+    function triggerMorph(targetId) {
+        if (morphState.isMorphing || morphState.nextTarget === targetId) return;
+
+        morphState.isMorphing = true;
+        morphState.currentTarget = morphState.nextTarget; // The old "next" is now the "current"
+        morphState.nextTarget = targetId;
+        
+        // Use a simple tween-like animation over 2 seconds
+        const duration = 2000;
+        const startTime = Date.now();
+
+        function updateMorph() {
+            const elapsedTime = Date.now() - startTime;
+            let progress = elapsedTime / duration;
+            
+            if (progress >= 1) {
+                progress = 1;
+                morphState.isMorphing = false;
+                morphState.currentTarget = morphState.nextTarget;
+            } else {
+                requestAnimationFrame(updateMorph);
+            }
+            
+            // Apply an easing function for smoother animation
+            morphState.progress = 0.5 - 0.5 * Math.cos(progress * Math.PI);
+            shaderMaterial.uniforms.uMorphProgress.value = morphState.progress;
+        }
+
+        shaderMaterial.uniforms.uCurrentTarget.value = morphState.currentTarget;
+        shaderMaterial.uniforms.uNextTarget.value = morphState.nextTarget;
+
+        updateMorph();
+    }
+    
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const delta = clock.getDelta();
+        shaderMaterial.uniforms.uTime.value += delta;
+        
+        controls.update();
+        
+        // Render scene using the post-processing composer
+        composer.render();
+    }
+
+
+    //================================================================================================
+    // 8. EVENT HANDLERS & MAIN EXECUTION
+    //================================================================================================
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        composer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    }
+
+    // Start the application
+    init();
+    animate();
+
+</script>
+</body>
+</html>
